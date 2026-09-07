@@ -74,16 +74,21 @@ jobs:
         # Required to persist the Gradle configuration cache across runs.
         cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-    # Pull requests run the fast custom linter (ciRemote); pushes to main / 8.x branches run the
-    # full Android lint (qaRemote). Both include screenshot validation, which is deliberately kept
-    # out of the local qa/ci tasks because screenshot rendering is host-OS dependent.
+    # Upstream runs this job on `ubuntu-latest-8-cores`, a signalapp-only label, so the racecar
+    # patch fell back to ubuntu-latest (4 cores / 16 GB). The full Android lint path (qaRemote)
+    # does not fit there: with org.gradle.jvmargs=-Xmx12g plus a 4g Kotlin daemon the runner
+    # itself dies ~20 min in during generateDebugUnitTestLintModel ("The runner has received a
+    # shutdown signal"), so the job fails with no failing step. ciRemote is upstream's own PR
+    # verification target - same clean + ktlint + buildQa + checkStopship + app and library unit
+    # tests + instrumentation compile + screenshot validation, with :fast-lint:fastLint standing
+    # in for full lint.
     - name: Build with Gradle
       env:
         SIGNAL_BUILD_CACHE_URL: ${{ secrets.SIGNAL_BUILD_CACHE_URL }}
         SIGNAL_BUILD_CACHE_USER: ${{ secrets.SIGNAL_BUILD_CACHE_USER }}
         SIGNAL_BUILD_CACHE_PASSWORD: ${{ secrets.SIGNAL_BUILD_CACHE_PASSWORD }}
         SIGNAL_BUILD_CACHE_PUSH: ${{ startsWith(github.ref, 'refs/heads/8.') }}
-      run: ./gradlew ${{ 'push' == 'pull_request' && 'ciRemote' || 'qaRemote' }}
+      run: ./gradlew ciRemote
 
     - name: Archive reports for failed build
       if: ${{ failure() }}
