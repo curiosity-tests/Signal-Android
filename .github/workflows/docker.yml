@@ -1,8 +1,7 @@
 name: Check reproducible-build Dockerfile
 
 on:
-  schedule:
-    - cron: "0 5 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read # to fetch code (actions/checkout)
